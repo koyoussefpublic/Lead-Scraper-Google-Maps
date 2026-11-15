@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Google Maps Lead Scraper{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <span class="brand-icon">📍</span>
+        <div class="brand-text">
+          <h1>LeadScraper</h1>
+          <span class="badge badge-platform">Railway Edition</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        {% if user %}
+          <div class="user-pill">
+            <span class="user-dot"></span>
+            <span class="username">{{ user }}</span>
+          </div>
+          <form method="POST" action="/logout" class="logout-form">
+            <button type="submit" class="btn btn-sm btn-ghost">Log out</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-container">
+      <span>Google Maps Lead Scraper • Self-Hosted Private Lead Generation</span>
+      <span class="footer-version">v2.0 • Headless Playwright</span>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

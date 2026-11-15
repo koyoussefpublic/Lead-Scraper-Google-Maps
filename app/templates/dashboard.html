@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Lead Scraper Dashboard • Railway{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+  
+  <!-- Active / In-Progress Job Monitor -->
+  <section id="active-job-section" class="card monitor-card hidden">
+    <div class="card-header monitor-header">
+      <div class="monitor-title-group">
+        <span class="pulsing-dot" id="monitor-pulse"></span>
+        <h2>Live Scraping Monitor: <span id="monitor-job-id" class="mono text-muted"></span></h2>
+        <span id="monitor-status-badge" class="badge">Running</span>
+      </div>
+      <div class="monitor-actions">
+        <button id="btn-cancel-job" class="btn btn-sm btn-danger" type="button">Stop Job</button>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <!-- Current Phase Notice -->
+      <div class="phase-banner">
+        <span class="phase-icon">⚡</span>
+        <span id="monitor-phase" class="phase-text">Starting scraper...</span>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-container">
+        <div class="progress-bar-wrap">
+          <div id="monitor-progress-bar" class="progress-bar" style="width: 0%;"></div>
+        </div>
+        <div class="progress-labels">
+          <span id="monitor-unit-progress">Unit 0 / 0</span>
+          <span id="monitor-pct">0%</span>
+        </div>
+      </div>
+
+      <!-- Live Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Found</span>
+          <span id="stat-found" class="stat-value">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Unique Leads</span>
+          <span id="stat-unique" class="stat-value text-accent">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Qualified</span>
+          <span id="stat-qualified" class="stat-value text-success">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Duplicates</span>
+          <span id="stat-duplicates" class="stat-value text-muted">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Blocks / Captchas</span>
+          <span id="stat-blocks" class="stat-value text-warning">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Elapsed / ETA</span>
+          <span id="stat-time" class="stat-value text-sm mono">0s</span>
+        </div>
+      </div>
+
+      <!-- Console Logs Box -->
+      <div class="console-box">
+        <div class="console-header">
+          <span>Live Scraper Execution Logs</span>
+          <button id="btn-clear-logs" class="btn-link" type="button">Clear View</button>
+        </div>
+        <pre id="console-output" class="console-output"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Create New Scraping Job -->
+  <section class="card form-card">
+    <div class="card-header">
+      <div class="header-icon">🚀</div>
+      <div>
+        <h2>Start New Scraping Job</h2>
+        <p class="subtitle">Extract qualified B2B leads from Google Maps without terminal interaction.</p>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <form id="scrape-form" class="job-form">
+        <div class="form-grid">
+          
+          <!-- City / Area -->
+          <div class="form-group col-span-2">
+            <label for="input-city">
+              Target City or Geographic Area <span class="required">*</span>
+            </label>
+            <div class="input-with-presets">
+              <input 
+                type="text" 
+                id="input-city" 
+                name="city" 
+                class="form-control" 
+                placeholder="e.g. Austin TX, Miami FL, London UK, or Lahore"
+                required
+              >
+              <select id="select-metro-preset" class="form-control preset-select">
+                <option value="">Quick US Metro Preset...</option>
+                {% for m in metros %}
+                  <option value="{{ m.search_term }}">{{ m.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <small class="form-hint">Accepts any city, suburb, county, or region recognized by Google Maps.</small>
+          </div>
+
+          <!-- Business Categories -->
+          <div class="form-group col-span-2">
+            <label>
+              Business Categories <span class="required">*</span>
+            </label>
+            <div class="category-chips-input">
+              <div id="selected-categories-list" class="chips-container"></div>
+              <div class="add-category-row">
+                <input 
+                  type="text" 
+                  id="custom-category-input" 
+                  class="form-control form-control-sm" 
+                  placeholder="Type a category and press Enter (e.g. solar panel installer)..."
+                >
+                <button type="button" id="btn-add-category" class="btn btn-sm btn-secondary">Add</button>
+              </div>
+            </div>
+            
+            <!-- Popular suggestions -->
+            <div class="popular-suggestions">
+              <span class="suggestions-label">Popular:</span>
+              {% for cat in categories[:12] %}
+                <button type="button" class="btn-chip" data-category="{{ cat }}">+ {{ cat }}</button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Search Depth -->
+          <div class="form-group">
+            <label for="select-depth">Search Depth</label>
+            <select id="select-depth" name="depth" class="form-control">
+              <option value="city" selected>City (1 search per category — fast)</option>
+              <option value="areas">Sub-Areas (Splits city into boroughs/neighborhoods)</option>
+              <option value="grid">Grid (Scrapes coordinate tiles for max coverage)</option>
+            </select>
+            <small class="form-hint">Google caps queries at ~120 results. Use Sub-Areas or Grid for maximum leads.</small>
+          </div>
+
+          <!-- Lead Profile -->
+          <div class="form-group">
+            <label for="select-profile">Lead Profile</label>
+            <select id="select-profile" name="profile" class="form-control">
+              <option value="no_website" selected>No Website (Prime targets for web agencies)</option>
+              <option value="no_email">No Email (Has website, but missing public email)</option>
+              <option value="all">All (Every scraped business regardless of status)</option>
+            </select>
+            <small class="form-hint">Controls which businesses are tagged as qualified leads in the export.</small>
+          </div>
+
+          <!-- Max Results per unit -->
+          <div class="form-group">
+            <label for="input-max-results">Max Results Per Search (Optional)</label>
+            <input 
+              type="number" 
+              id="input-max-results" 
+              name="max_results" 
+              class="form-control" 
+              placeholder="Default: unlimited (~120 per query)"
+              min="1" 
+              max="2000"
+            >
+          </div>
+
+          <!-- Phone Number Required -->
+          <div class="form-group flex-col-center">
+            <label class="checkbox-label" for="check-phone">
+              <input type="checkbox" id="check-phone" name="require_phone" checked>
+              <span>Require valid phone number for qualification</span>
+            </label>
+            <label class="checkbox-label" for="check-crawl">
+              <input type="checkbox" id="check-crawl" name="crawl_websites" checked>
+              <span>Crawl websites for emails & social links</span>
+            </label>
+          </div>
+
+          <!-- Grid Options (Hidden unless depth == grid) -->
+          <div id="grid-options" class="form-group col-span-2 hidden grid-options-panel">
+            <h4>Grid Configuration</h4>
+            <div class="grid-controls">
+              <div>
+                <label for="input-grid-rows">Rows:</label>
+                <input type="number" id="input-grid-rows" name="grid_rows" value="3" min="1" max="10" class="form-control">
+              </div>
+              <div>
+                <label for="input-grid-cols">Columns:</label>
+                <input type="number" id="input-grid-cols" name="grid_cols" value="3" min="1" max="10" class="form-control">
+              </div>
+              <div>
+                <label for="input-grid-span">Span (km):</label>
+                <input type="number" id="input-grid-span" name="grid_span_km" value="18" min="1" max="100" step="0.5" class="form-control">
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-footer">
+          <button type="submit" id="btn-submit-job" class="btn btn-primary btn-lg">
+            <span>⚡ Start Scraping Job</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Scraping Jobs History -->
+  <section class="card table-card">
+    <div class="card-header table-header">
+      <div class="header-icon">📂</div>
+      <div>
+        <h2>Completed & Past Scraping Jobs</h2>
+        <p class="subtitle">Download raw CSV, qualified leads CSV, or complete Excel (.xlsx) workbooks.</p>
+      </div>
+      <button id="btn-refresh-jobs" class="btn btn-sm btn-ghost" title="Refresh list">
+        🔄 Refresh
+      </button>
+    </div>
+
+    <div class="card-body no-padding">
+      <div class="table-responsive">
+        <table class="jobs-table">
+          <thead>
+            <tr>
+              <th>Job ID & Date</th>
+              <th>Target & Categories</th>
+              <th>Depth & Profile</th>
+              <th>Status</th>
+              <th>Leads (Raw / Qual)</th>
+              <th>Downloads</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="jobs-table-body">
+            {% if jobs %}
+              {% for j in jobs %}
+                <tr id="row-{{ j.job_id }}" class="job-row">
+                  <td>
+                    <div class="mono text-bold">{{ j.job_id }}</div>
+                    <div class="text-sm text-muted">{{ j.created_at[:16].replace('T', ' ') }}</div>
+                  </td>
+                  <td>
+                    <div class="target-name">📍 {{ j.params.city }}</div>
+                    <div class="categories-preview text-sm text-muted">
+                      {{ j.params.categories|join(', ') }}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge badge-subtle">{{ j.params.depth }}</span>
+                    <span class="badge badge-subtle">{{ j.params.profile }}</span>
+                  </td>
+                  <td>
+                    <span class="badge badge-{{ j.status }}">{{ j.status }}</span>
+                  </td>
+                  <td>
+                    <div class="lead-counts">
+                      <span title="Total raw businesses found">{{ j.stats.found }} total</span> /
+                      <strong class="text-success" title="Qualified leads">{{ j.stats.qualified }} qual</strong>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="download-group">
+                      {% if j.files.qualified_csv %}
+                        <a href="/api/jobs/{{ j.job_id }}/download/leads_qualified.csv" class="btn btn-xs btn-success" download>
+                          Qualified CSV
+                        </a>
+                      {% endif %}
+                      {% if j.files.raw_csv %}
+                        <a href="/api/jobs/{{ j.job_id }}/download/leads_raw.csv" class="btn btn-xs btn-outline" download>
+                          Raw CSV
+                        </a>
+                      {% endif %}
+                      {% if j.files.xlsx %}
+                        <a href="/api/jobs/{{ j.job_id }}/download/leads.xlsx" class="btn btn-xs btn-primary" download>
+                          Excel (.xlsx)
+                        </a>
+                      {% endif %}
+                      {% if j.files.log %}
+                        <a href="/api/jobs/{{ j.job_id }}/download/scraper.log" class="btn btn-xs btn-ghost" download>
+                          Log
+                        </a>
+                      {% endif %}
+                    </div>
+                  </td>
+                  <td>
+                    <button class="btn btn-xs btn-ghost btn-inspect" data-job-id="{{ j.job_id }}">
+                      Inspect
+                    </button>
+                    <button class="btn btn-xs btn-ghost text-danger btn-delete" data-job-id="{{ j.job_id }}">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr id="no-jobs-row">
+                <td colspan="7" class="text-center py-8 text-muted">
+                  No scraping jobs yet. Launch your first run above!
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/app.js"></script>
+{% endblock %}

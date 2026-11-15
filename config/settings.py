@@ -60,6 +60,8 @@ BROWSER_ARGS = [
     "--no-first-run",
     "--no-default-browser-check",
     "--disable-dev-shm-usage",
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
 ]
 
 # --- Anti-Detection Delays (seconds) ---
