@@ -17,7 +17,9 @@ env/
 
 # Environment variables
 .env
+.env.*
 *.env
+!.env.example
 
 # Scraper output (contains lead data — do not commit)
 output/

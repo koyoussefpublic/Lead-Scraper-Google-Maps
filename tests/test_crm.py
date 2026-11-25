@@ -374,3 +374,34 @@ async def test_tasks_demos_campaigns_and_crm_api(auth_client: Path):
     assert client.get("/api/crm/leads").status_code == 200
     assert client.get("/api/crm/analytics").status_code == 200
     assert client.get("/api/crm/whatsapp/status").json()["development_mock_mode"] is True
+
+
+def test_generate_envs_script(tmp_path: Path):
+    """Verify helper script generates local, CRM prod, and Evolution API envs with matching keys."""
+    from scripts.generate_envs import generate_env_files
+
+    written = generate_env_files(
+        out_dir=tmp_path,
+        crm_domain="crm.cartefidele.com",
+        evolution_domain="evo.cartefidele.com",
+        instance="cf-wa",
+    )
+    local_txt = written["local"].read_text(encoding="utf-8")
+    crm_txt = written["crm_prod"].read_text(encoding="utf-8")
+    evo_txt = written["evolution_prod"].read_text(encoding="utf-8")
+
+    assert "APP_ENV=development" in local_txt
+    assert "ALLOW_EXTERNAL_MESSAGING=false" in local_txt
+    assert "WHATSAPP_PROVIDER=mock" in local_txt
+
+    assert "APP_ENV=production" in crm_txt
+    assert "EVOLUTION_API_BASE_URL=https://evo.cartefidele.com" in crm_txt
+    assert "EVOLUTION_API_INSTANCE=cf-wa" in crm_txt
+
+    assert "SERVER_URL=https://evo.cartefidele.com" in evo_txt
+    assert "WEBHOOK_GLOBAL_URL=https://crm.cartefidele.com/api/webhooks/evolution" in evo_txt
+
+    # Matching API key between CRM and Evolution API
+    crm_key = [l.split("=", 1)[1] for l in crm_txt.splitlines() if l.startswith("EVOLUTION_API_KEY=")][0]
+    evo_key = [l.split("=", 1)[1] for l in evo_txt.splitlines() if l.startswith("AUTHENTICATION_API_KEY=")][0]
+    assert crm_key and crm_key == evo_key
