@@ -5,15 +5,16 @@
 ### Find local businesses that need a website.
 
 An async, resumable Playwright scraper that turns Google Maps results into
-outreach-ready CSV and Excel lead lists — with a guided setup wizard and a live
-terminal dashboard.
+outreach-ready CSV, Excel, and ZIP lead lists — with a guided CLI wizard, live
+terminal dashboard, and a FastAPI web dashboard.
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/python/)
-[![Tests](https://img.shields.io/badge/tests-258%20passing-22c55e)](#testing)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Web%20Dashboard-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Tests](https://img.shields.io/badge/tests-286%20passing-22c55e)](#testing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0ea5e9)](LICENSE)
 
-**No API key · Any city worldwide · CSV + Excel · Crash-safe resume**
+**No API key · Any city worldwide · CLI + Web UI · CSV + Excel + ZIP · Crash-safe resume**
 
 </div>
 
@@ -330,6 +331,49 @@ python main.py --doctor
 Doctor opens one live search and distinguishes selector drift from traffic
 blocking — different problems requiring different fixes.
 
+## Web Dashboard & API
+
+In addition to the CLI, the project includes an authenticated FastAPI web dashboard (`web.py`) with a background job queue (`app/queue.py` / `worker.py`), live progress & log streaming, and bulk exports.
+
+### Run locally
+
+```bash
+python web.py
+```
+
+Open `http://localhost:8000` in your browser. Default credentials are `admin` / `admin123` (override via `APP_USERNAME` and `APP_PASSWORD` or `APP_PASSWORD_HASH` in `.env` — see [`.env.example`](.env.example)).
+
+To run a dedicated background worker process (optional, uses Redis when `REDIS_URL` is set, otherwise falls back to an in-process async queue):
+
+```bash
+python worker.py
+```
+
+### Dashboard features
+
+- **Job launcher**: Configure target city or US metro preset, business categories, search depth (`city`, `areas`, `grid`), lead profile (`no_website`, `no_email`, `all`), and result caps.
+- **Live monitor**: Real-time progress bar, unit counts, ETA, lead stats, block counter, and execution logs with job cancellation.
+- **Job history & actions**: Inspect past/active jobs, **Duplicate** any job to re-run it with the same parameters, or delete jobs and their artifacts.
+- **Downloads & bulk export**: Download per-job `leads_qualified.csv`, `leads_raw.csv`, `leads.xlsx`, or `scraper.log`, or click **Export All (.zip)** to download all job outputs in a single ZIP archive.
+
+### REST API endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/jobs` | Create and enqueue a new scraping job |
+| `GET` | `/api/jobs` | List all jobs (newest first) |
+| `GET` | `/api/jobs/{job_id}` | Get job status, stats, and recent logs |
+| `POST` | `/api/jobs/{job_id}/duplicate` | Duplicate an existing job and enqueue it |
+| `POST` | `/api/jobs/{job_id}/cancel` | Cancel a queued or running job |
+| `DELETE` | `/api/jobs/{job_id}` | Delete a job and its output files |
+| `GET` | `/api/jobs/{job_id}/download/{filename}` | Download `leads_raw.csv`, `leads_qualified.csv`, `leads.xlsx`, or `scraper.log` |
+| `GET` | `/api/jobs/export/zip` | Export all generated job files in a single ZIP archive |
+| `GET` | `/api/health` | Healthcheck endpoint |
+
+### Railway deployment
+
+[`railway.json`](railway.json) configures Docker builds (`Dockerfile`), `python web.py` as the start command, and `/health` healthchecks. Mount a persistent volume at `/app/output` (or set `OUTPUT_DIR`) to preserve job history and exports across deployments.
+
 ## Docker
 
 ```bash
@@ -367,28 +411,34 @@ These measures reduce risk; they cannot guarantee uninterrupted scraping.
 ```mermaid
 flowchart TB
     CLI[main.py<br/>CLI + wizard] --> Config[RunConfig]
+    Web[web.py / app/<br/>FastAPI + queue] --> Runner[runner.py<br/>orchestration]
     Config --> Planner[geo/<br/>resolve + areas + grid]
-    Planner --> Runner[runner.py<br/>orchestration]
+    Planner --> Runner
     Runner --> Browser[scraper/<br/>Playwright + extraction]
     Browser --> Maps[(Google Maps)]
     Browser --> Normalize[data/<br/>normalize + deduplicate]
     Normalize --> Qualify[data/qualifier.py]
-    Qualify --> Export[data/exporter.py<br/>CSV + XLSX]
+    Qualify --> Export[data/exporter.py<br/>CSV + XLSX + ZIP]
     Runner <--> State[persistence/<br/>progress + checkpoints]
-    Runner --> UI[ui/<br/>dashboard or logs]
+    Runner --> UI[ui/ & app/templates/<br/>TUI or web dashboard]
 ```
 
 ```text
 main.py           CLI, wizard lifecycle, run summary
+web.py            FastAPI web server entry point
+worker.py         Optional standalone Redis/async job worker
 runner.py         Search orchestration, retries, resume
 reporting.py      Statistics and reporter interface
+app/              Web app (auth, jobs, queue, API routes, templates, static)
 config/           Settings, enums, presets, run config
 geo/              Place resolution, areas, grid, plan
 scraper/          Browser, Maps extraction, selectors
 data/             Models, normalization, qualification, export
 persistence/      Atomic progress and checkpoints
-ui/               Interactive wizard and live dashboard
+ui/               Interactive wizard and live terminal dashboard
 tests/            Offline unit and integration tests
+railway.json      Railway deployment configuration
+.env.example      Environment variable template for web & scraper
 ```
 
 ## Testing
@@ -399,9 +449,10 @@ Tests are fully offline:
 python -m pytest
 ```
 
-Current suite covers CLI parsing, wizard lifecycle, selector contracts,
+Current suite (**286 tests**) covers CLI parsing, wizard lifecycle, selector contracts,
 retries, extraction parsers, normalization, deduplication, lead profiles,
-geography, persistence, export, and runner recovery.
+geography, persistence, export, runner recovery, and web dashboard auth, job
+lifecycle (creation, duplication, cancellation, deletion), and file/ZIP downloads.
 
 ## Responsible use
 
