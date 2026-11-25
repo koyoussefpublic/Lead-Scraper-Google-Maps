@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Table
   const jobsTableBody = document.getElementById("jobs-table-body");
   const btnRefreshJobs = document.getElementById("btn-refresh-jobs");
+  const btnExportAllZip = document.getElementById("btn-export-all-zip");
 
   // --- Category Chips Management ---
   function renderChips() {
@@ -332,6 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
           </td>
           <td>
             <button class="btn btn-xs btn-ghost btn-inspect" data-job-id="${j.job_id}">Inspect</button>
+            <button class="btn btn-xs btn-ghost btn-duplicate" data-job-id="${j.job_id}" title="Duplicate and re-run job">Duplicate</button>
             <button class="btn btn-xs btn-ghost text-danger btn-delete" data-job-id="${j.job_id}">Delete</button>
           </td>
         </tr>
@@ -339,12 +341,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }).join("");
   }
 
-  // Inspect and Delete button handlers in table
+  // Inspect, Duplicate, and Delete button handlers in table
   jobsTableBody.addEventListener("click", async e => {
     const inspectBtn = e.target.closest(".btn-inspect");
     if (inspectBtn) {
       const jid = inspectBtn.getAttribute("data-job-id");
       startMonitoring(jid);
+      return;
+    }
+
+    const duplicateBtn = e.target.closest(".btn-duplicate");
+    if (duplicateBtn) {
+      const jid = duplicateBtn.getAttribute("data-job-id");
+      duplicateBtn.disabled = true;
+      try {
+        const resp = await fetch(`/api/jobs/${jid}/duplicate`, { method: "POST" });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.detail || "Failed to duplicate job.");
+        }
+        const newJob = await resp.json();
+        startMonitoring(newJob.job_id);
+        refreshJobsTable();
+      } catch (err) {
+        alert("Duplicate failed: " + err.message);
+      } finally {
+        duplicateBtn.disabled = false;
+      }
       return;
     }
 
@@ -365,6 +388,39 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
+
+  if (btnExportAllZip) {
+    btnExportAllZip.addEventListener("click", async () => {
+      const originalHtml = btnExportAllZip.innerHTML;
+      btnExportAllZip.disabled = true;
+      btnExportAllZip.innerHTML = "⏳ Exporting...";
+      try {
+        const resp = await fetch("/api/jobs/export/zip");
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.detail || "Failed to export ZIP.");
+        }
+        const blob = await resp.blob();
+        const disposition = resp.headers.get("Content-Disposition") || "";
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        const filename = match ? match[1] : "all_jobs_export.zip";
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Export failed: " + err.message);
+      } finally {
+        btnExportAllZip.disabled = false;
+        btnExportAllZip.innerHTML = originalHtml;
+      }
+    });
+  }
 
   btnRefreshJobs.addEventListener("click", refreshJobsTable);
 

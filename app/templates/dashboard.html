@@ -226,9 +226,14 @@
         <h2>Completed & Past Scraping Jobs</h2>
         <p class="subtitle">Download raw CSV, qualified leads CSV, or complete Excel (.xlsx) workbooks.</p>
       </div>
-      <button id="btn-refresh-jobs" class="btn btn-sm btn-ghost" title="Refresh list">
-        🔄 Refresh
-      </button>
+      <div class="header-actions" style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
+        <button id="btn-export-all-zip" class="btn btn-sm btn-primary" type="button" title="Export all job files in a ZIP archive">
+          📦 Export All (.zip)
+        </button>
+        <button id="btn-refresh-jobs" class="btn btn-sm btn-ghost" type="button" title="Refresh list">
+          🔄 Refresh
+        </button>
+      </div>
     </div>
 
     <div class="card-body no-padding">
@@ -299,6 +304,9 @@
                   <td>
                     <button class="btn btn-xs btn-ghost btn-inspect" data-job-id="{{ j.job_id }}">
                       Inspect
+                    </button>
+                    <button class="btn btn-xs btn-ghost btn-duplicate" data-job-id="{{ j.job_id }}" title="Duplicate and re-run job">
+                      Duplicate
                     </button>
                     <button class="btn btn-xs btn-ghost text-danger btn-delete" data-job-id="{{ j.job_id }}">
                       Delete

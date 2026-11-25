@@ -121,3 +121,40 @@ def test_job_deletion():
 
     assert job_manager.get_job(job_id) is None
     assert not job_dir.exists()
+
+
+def test_job_duplication():
+    """Verify duplicating an existing job creates a new job with identical parameters."""
+    payload = {
+        "city": "Austin TX",
+        "categories": ["electricians", "plumbers"],
+        "depth": "areas",
+        "profile": "no_email",
+        "max_results": 50,
+        "require_phone": False,
+        "crawl_websites": True,
+    }
+    orig_resp = client.post("/api/jobs", json=payload)
+    assert orig_resp.status_code == 201
+    orig_job = orig_resp.json()
+    orig_id = orig_job["job_id"]
+
+    dup_resp = client.post(f"/api/jobs/{orig_id}/duplicate")
+    assert dup_resp.status_code == 201
+    dup_job = dup_resp.json()
+    dup_id = dup_job["job_id"]
+
+    try:
+        assert dup_id != orig_id
+        assert dup_id.startswith("job_")
+        assert dup_job["status"] in ("queued", "running")
+        assert dup_job["params"] == orig_job["params"]
+    finally:
+        job_manager.delete_job(orig_id)
+        job_manager.delete_job(dup_id)
+
+
+def test_duplicate_missing_job_returns_404():
+    """Duplicating a non-existent job returns 404."""
+    resp = client.post("/api/jobs/nonexistent_job_999/duplicate")
+    assert resp.status_code == 404

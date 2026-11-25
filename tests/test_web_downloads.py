@@ -1,5 +1,8 @@
 """Tests for secure file downloads and path traversal prevention."""
 
+import io
+import zipfile
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -102,4 +105,42 @@ def test_unauthorized_download_blocked():
     """Downloads without authentication must be rejected."""
     client.cookies.clear()
     resp = client.get("/api/jobs/job_test_123/download/leads_raw.csv")
+    assert resp.status_code == 401
+
+
+def test_export_all_jobs_zip():
+    """Verify exporting all jobs into a single ZIP archive."""
+    # Ensure clean state or at least test with created jobs
+    job1 = job_manager.create_job({"city": "Tampa FL", "categories": ["plumbers"]})
+    job2 = job_manager.create_job({"city": "Miami FL", "categories": ["roofing"]})
+
+    try:
+        dir1 = job_manager.get_job_dir(job1.job_id)
+        dir2 = job_manager.get_job_dir(job2.job_id)
+
+        (dir1 / "leads_raw.csv").write_text("Name\nPlumber A\n", encoding="utf-8")
+        (dir1 / "leads_qualified.csv").write_text("Name\nPlumber A\n", encoding="utf-8")
+        (dir2 / "leads.xlsx").write_bytes(b"PK\x03\x04mock_xlsx")
+
+        resp = client.get("/api/jobs/export/zip")
+        assert resp.status_code == 200
+        assert "application/zip" in resp.headers["content-type"]
+        assert "all_jobs_export_" in resp.headers["content-disposition"]
+
+        with zipfile.ZipFile(io.BytesIO(resp.content), "r") as zf:
+            names = zf.namelist()
+            assert f"{job1.job_id}/leads_raw.csv" in names
+            assert f"{job1.job_id}/leads_qualified.csv" in names
+            assert f"{job2.job_id}/leads.xlsx" in names
+            assert f"{job1.job_id}/meta.json" not in names
+            assert zf.read(f"{job1.job_id}/leads_raw.csv").decode("utf-8").replace("\r\n", "\n") == "Name\nPlumber A\n"
+    finally:
+        job_manager.delete_job(job1.job_id)
+        job_manager.delete_job(job2.job_id)
+
+
+def test_export_all_jobs_zip_unauthorized():
+    """ZIP export without authentication must be rejected."""
+    client.cookies.clear()
+    resp = client.get("/api/jobs/export/zip")
     assert resp.status_code == 401

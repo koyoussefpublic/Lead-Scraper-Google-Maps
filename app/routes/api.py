@@ -1,11 +1,14 @@
 """REST API endpoints for jobs, logs, downloads, and metadata."""
 
+import io
 import mimetypes
+import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 
 from app.auth import get_current_user
 from app.jobs import job_manager
@@ -42,6 +45,61 @@ async def list_jobs(
 ):
     """List all scraping jobs (newest first)."""
     return job_manager.list_jobs()
+
+
+@router.get("/jobs/export/zip")
+async def export_all_jobs_zip(
+    current_user: str = Depends(get_current_user),
+):
+    """Export all generated output files across all jobs into a single ZIP archive."""
+    jobs = job_manager.list_jobs()
+    zip_buffer = io.BytesIO()
+    added_count = 0
+
+    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for job in jobs:
+            try:
+                job_dir = job_manager.get_job_dir(job.job_id).resolve()
+            except ValueError:
+                continue
+
+            for filename in ALLOWED_DOWNLOAD_FILES:
+                target_file = (job_dir / filename).resolve()
+                if target_file.is_relative_to(job_dir) and target_file.is_file():
+                    zf.write(target_file, arcname=f"{job.job_id}/{filename}")
+                    added_count += 1
+
+    if added_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No exportable files found across any jobs.",
+        )
+
+    zip_buffer.seek(0)
+    zip_filename = f"all_jobs_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'},
+    )
+
+
+@router.post("/jobs/{job_id}/duplicate", response_model=JobStatus, status_code=status.HTTP_201_CREATED)
+async def duplicate_job(
+    job_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Duplicate an existing job with the same parameters and enqueue it."""
+    existing = job_manager.get_job(job_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{job_id}' not found."
+        )
+
+    validated = JobCreate(**existing.params)
+    new_job = job_manager.create_job(validated.model_dump())
+    await enqueue_job(new_job.job_id)
+    return new_job
 
 
 @router.get("/jobs/{job_id}", response_model=JobDetail)
