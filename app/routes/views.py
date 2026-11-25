@@ -35,3 +35,18 @@ async def dashboard_view(request: Request):
             "metros": METROS,
         },
     )
+
+
+@router.get("/crm", response_class=HTMLResponse)
+async def crm_view(request: Request):
+    """Render the CarteFidele Prospecting CRM & Outreach workspace."""
+    user = get_current_user_optional(request)
+    if not user:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/login", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="crm.html",
+        context={"user": user},
+    )

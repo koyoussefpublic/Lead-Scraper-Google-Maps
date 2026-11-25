@@ -15,7 +15,9 @@ from app import config
 from app.queue import start_worker, stop_worker
 from app.routes.api import router as api_router
 from app.routes.auth import router as auth_router
+from app.routes.crm_api import router as crm_api_router
 from app.routes.views import router as views_router
+from crm.migrations import init_db
 
 # Configure logging
 logging.basicConfig(
@@ -33,7 +35,8 @@ _request_counts: dict[str, list[float]] = defaultdict(list)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan manager for background worker initialization and clean shutdown."""
-    logger.info("Initializing Google Maps Lead Scraper Web Application...")
+    logger.info("Initializing Google Maps Lead Scraper & CarteFidele CRM...")
+    init_db()
     logger.info(f"Persistent Output Directory: {config.OUTPUT_DIR}")
     logger.info(f"Concurrency Limit: {config.CONCURRENCY_LIMIT}")
     logger.info(f"Headless Mode: {config.HEADLESS}")
@@ -98,10 +101,14 @@ static_dir = BASE_DIR / "static"
 static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+# Initialize CRM database schema on startup
+init_db()
+
 # Include Routers
 app.include_router(auth_router)
 app.include_router(views_router)
 app.include_router(api_router)
+app.include_router(crm_api_router)
 
 
 # Root Health Check (Railway requirement)

@@ -51,3 +51,27 @@ HEADLESS = _env_bool("HEADLESS", True)
 RATE_LIMIT_ENABLED = _env_bool("RATE_LIMIT_ENABLED", True)
 RATE_LIMIT_MAX_REQUESTS = _env_int("RATE_LIMIT_MAX_REQUESTS", 60)
 RATE_LIMIT_WINDOW_SECONDS = _env_int("RATE_LIMIT_WINDOW_SECONDS", 60)
+
+# Environment & External Messaging Safety
+APP_ENV = os.environ.get("APP_ENV", "development").strip().lower()
+ALLOW_EXTERNAL_MESSAGING = _env_bool("ALLOW_EXTERNAL_MESSAGING", False)
+
+# Email (Resend)
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "").strip()
+RESEND_REPLY_TO = os.environ.get("RESEND_REPLY_TO", "contact@cartefidele.com").strip()
+RESEND_WEBHOOK_SECRET = os.environ.get("RESEND_WEBHOOK_SECRET", "").strip()
+
+# WhatsApp (Self-Hosted Evolution API or Local Mock)
+WHATSAPP_ENABLED = _env_bool("WHATSAPP_ENABLED", False)
+WHATSAPP_PROVIDER = os.environ.get("WHATSAPP_PROVIDER", "mock").strip().lower()
+EVOLUTION_API_ENABLED = _env_bool("EVOLUTION_API_ENABLED", False)
+EVOLUTION_API_BASE_URL = os.environ.get("EVOLUTION_API_BASE_URL", "").strip().rstrip("/")
+EVOLUTION_API_KEY = os.environ.get("EVOLUTION_API_KEY", "").strip()
+EVOLUTION_API_INSTANCE = os.environ.get("EVOLUTION_API_INSTANCE", "").strip()
+EVOLUTION_WEBHOOK_SECRET = os.environ.get("EVOLUTION_WEBHOOK_SECRET", "").strip()
+
+
+def is_external_messaging_allowed() -> bool:
+    """Enforce backend safety: local development never sends external messages."""
+    return APP_ENV == "production" and ALLOW_EXTERNAL_MESSAGING

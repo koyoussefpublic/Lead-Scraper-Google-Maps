@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}CarteFidele CRM • Prospecting & Outreach{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+
+  <!-- CRM Sub-Navigation Tabs -->
+  <div class="card" style="padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between;">
+    <div id="crm-tabs" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+      <button class="btn btn-sm btn-primary crm-tab" data-tab="overview">Overview & Analytics</button>
+      <button class="btn btn-sm btn-ghost crm-tab" data-tab="leads">Leads</button>
+      <button class="btn btn-sm btn-ghost crm-tab" data-tab="pipeline">Pipeline (Kanban)</button>
+      <button class="btn btn-sm btn-ghost crm-tab" data-tab="tasks">Tasks & Demos</button>
+      <button class="btn btn-sm btn-ghost crm-tab" data-tab="campaigns">Campaigns & Templates</button>
+      <button class="btn btn-sm btn-ghost crm-tab" data-tab="inbox">Unified Inbox</button>
+      <button class="btn btn-sm btn-ghost crm-tab" data-tab="integrations">WhatsApp & Email</button>
+      <button class="btn btn-sm btn-ghost crm-tab" data-tab="compliance">Compliance & Settings</button>
+    </div>
+    <span id="crm-env-badge" class="badge badge-subtle">Loading env...</span>
+  </div>
+
+  <!-- 1. OVERVIEW & ANALYTICS -->
+  <section id="tab-overview" class="crm-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-icon">📊</div>
+        <div>
+          <h2>CarteFidele Sales & Prospecting Overview</h2>
+          <p class="subtitle">Track discovered leads, outreach eligibility, replies, demos booked, and conversions.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="stats-grid" id="crm-kpi-grid"></div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
+          <div class="card" style="padding: 1rem;">
+            <h3 style="margin-bottom: 0.75rem;">Top Categories</h3>
+            <div id="analytics-categories" class="text-sm text-muted">Loading...</div>
+          </div>
+          <div class="card" style="padding: 1rem;">
+            <h3 style="margin-bottom: 0.75rem;">Top Cities</h3>
+            <div id="analytics-cities" class="text-sm text-muted">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. LEADS TABLE + BULK + CSV IMPORT/EXPORT -->
+  <section id="tab-leads" class="crm-panel hidden">
+    <div class="card">
+      <div class="card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div class="header-icon">🏢</div>
+          <div>
+            <h2>Leads Database</h2>
+            <p class="subtitle">Deduplicated businesses from Google Maps and CSV imports with explainable scoring.</p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <label class="btn btn-sm btn-secondary" style="cursor: pointer;">
+            📥 Import CSV
+            <input type="file" id="crm-import-csv-input" accept=".csv" style="display: none;">
+          </label>
+          <a href="/api/crm/leads/export-csv" class="btn btn-sm btn-primary" download>📤 Export CSV</a>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+          <input type="text" id="lead-filter-search" class="form-control form-control-sm" placeholder="Search name, city, phone, email..." style="max-width: 240px;">
+          <select id="lead-filter-status" class="form-control form-control-sm" style="max-width: 170px;">
+            <option value="">All statuses</option>
+            <option value="new">New</option>
+            <option value="researching">Researching</option>
+            <option value="qualified">Qualified</option>
+            <option value="contacted">Contacted</option>
+            <option value="replied">Replied</option>
+            <option value="interested">Interested</option>
+            <option value="demo_scheduled">Demo Scheduled</option>
+            <option value="demo_completed">Demo Completed</option>
+            <option value="trial">Trial</option>
+            <option value="converted">Converted</option>
+            <option value="not_interested">Not Interested</option>
+            <option value="do_not_contact">Do Not Contact</option>
+          </select>
+          <input type="number" id="lead-filter-min-score" class="form-control form-control-sm" placeholder="Min score" min="0" max="100" style="max-width: 110px;">
+          <button id="btn-filter-leads" class="btn btn-sm btn-primary" type="button">Filter</button>
+          <div style="margin-left: auto; display: flex; gap: 0.4rem;">
+            <select id="bulk-action-status" class="form-control form-control-sm" style="max-width: 160px;">
+              <option value="">Bulk status...</option>
+              <option value="qualified">Mark Qualified</option>
+              <option value="researching">Mark Researching</option>
+              <option value="disqualified">Mark Disqualified</option>
+              <option value="do_not_contact">Do Not Contact</option>
+            </select>
+            <button id="btn-apply-bulk" class="btn btn-sm btn-secondary" type="button">Apply</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all-leads"></th>
+                <th>Business</th>
+                <th>City / Country</th>
+                <th>Contact</th>
+                <th>Rating</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="crm-leads-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. PIPELINE KANBAN -->
+  <section id="tab-pipeline" class="crm-panel hidden">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-icon">🗂️</div>
+        <div>
+          <h2>Sales Pipeline</h2>
+          <p class="subtitle">Move prospects from discovery to CarteFidele demo and conversion.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="kanban-board" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. TASKS & DEMOS -->
+  <section id="tab-tasks" class="crm-panel hidden">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-icon">📅</div>
+        <div>
+          <h2>Tasks, Follow-ups & Demos</h2>
+          <p class="subtitle">Manage daily follow-up tasks and scheduled CarteFidele product demos.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+          <button class="btn btn-sm btn-secondary task-bucket" data-bucket="today">Today</button>
+          <button class="btn btn-sm btn-secondary task-bucket" data-bucket="overdue">Overdue</button>
+          <button class="btn btn-sm btn-secondary task-bucket" data-bucket="upcoming">Upcoming</button>
+          <button class="btn btn-sm btn-secondary task-bucket" data-bucket="completed">Completed</button>
+          <button class="btn btn-sm btn-primary task-bucket" data-bucket="all">All</button>
+        </div>
+        <div id="crm-tasks-list" style="margin-bottom: 1.5rem;"></div>
+        <h3 style="margin-bottom: 0.75rem;">Scheduled Demos</h3>
+        <div id="crm-demos-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. CAMPAIGNS & TEMPLATES -->
+  <section id="tab-campaigns" class="crm-panel hidden">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-icon">📣</div>
+        <div>
+          <h2>Outreach Campaigns & Templates</h2>
+          <p class="subtitle">Compliance-checked Email (Resend), WhatsApp (Evolution/Mock), and manual call/social campaigns.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <form id="campaign-create-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem; margin-bottom: 1.25rem;">
+          <input type="text" id="camp-name" class="form-control form-control-sm" placeholder="Campaign name" required>
+          <select id="camp-channel" class="form-control form-control-sm">
+            <option value="email">Email (Resend)</option>
+            <option value="whatsapp">WhatsApp (Evolution / Mock)</option>
+            <option value="manual_call">Manual Phone Call Tasks</option>
+            <option value="manual_instagram">Manual Instagram Tasks</option>
+            <option value="manual_facebook">Manual Facebook Tasks</option>
+            <option value="manual_linkedin">Manual LinkedIn Tasks</option>
+          </select>
+          <select id="camp-lang" class="form-control form-control-sm">
+            <option value="fr">French (FR)</option>
+            <option value="en">English (EN)</option>
+            <option value="ar">Arabic (AR)</option>
+          </select>
+          <input type="number" id="camp-min-score" class="form-control form-control-sm" value="40" min="0" max="100" placeholder="Min Score">
+          <button type="submit" class="btn btn-sm btn-primary">+ Create Campaign</button>
+        </form>
+        <div id="crm-campaigns-list" style="margin-bottom: 1.5rem;"></div>
+        <h3 style="margin-bottom: 0.75rem;">Message Templates</h3>
+        <div id="crm-templates-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. UNIFIED INBOX -->
+  <section id="tab-inbox" class="crm-panel hidden">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-icon">💬</div>
+        <div>
+          <h2>Unified Conversation Inbox</h2>
+          <p class="subtitle">Review outgoing messages, incoming WhatsApp/email replies, and update conversation status.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="crm-inbox-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. WHATSAPP & EMAIL INTEGRATIONS -->
+  <section id="tab-integrations" class="crm-panel hidden">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-icon">🔌</div>
+        <div>
+          <h2>WhatsApp (Self-Hosted Evolution API) & Email (Resend)</h2>
+          <p class="subtitle">Monitor provider status, local development mock safety, and Baileys QR pairing.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="integrations-status-box" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;"></div>
+        <div id="whatsapp-qr-box" class="card hidden" style="margin-top: 1rem; padding: 1rem;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. COMPLIANCE & SETTINGS -->
+  <section id="tab-compliance" class="crm-panel hidden">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-icon">🛡️</div>
+        <div>
+          <h2>Compliance, Suppression List & Settings</h2>
+          <p class="subtitle">Opt-outs and suppressions always override lead scores and campaign targeting.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <form id="suppression-form" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+          <select id="sup-channel" class="form-control form-control-sm" style="max-width: 140px;">
+            <option value="all">All Channels</option>
+            <option value="email">Email</option>
+            <option value="whatsapp">WhatsApp</option>
+          </select>
+          <input type="text" id="sup-identifier" class="form-control form-control-sm" placeholder="Email or phone (+212...)" required style="max-width: 240px;">
+          <input type="text" id="sup-reason" class="form-control form-control-sm" placeholder="Reason (e.g. Opt-out)" style="max-width: 220px;">
+          <button type="submit" class="btn btn-sm btn-danger">Add to Suppression List</button>
+        </form>
+        <div id="crm-suppression-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEAD DETAIL MODAL / DRAWER -->
+  <div id="lead-detail-modal" class="card hidden" style="position: fixed; top: 5%; right: 2%; width: min(680px, 95vw); max-height: 90vh; overflow-y: auto; z-index: 1000; box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
+    <div class="card-header" style="justify-content: space-between;">
+      <h2 id="modal-lead-title">Lead Details</h2>
+      <button id="btn-close-lead-modal" class="btn btn-sm btn-ghost" type="button">✕ Close</button>
+    </div>
+    <div id="modal-lead-body" class="card-body"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/crm.js"></script>
+{% endblock %}

@@ -11,7 +11,7 @@ terminal dashboard, and a FastAPI web dashboard.
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/python/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Web%20Dashboard-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-286%20passing-22c55e)](#testing)
+[![Tests](https://img.shields.io/badge/tests-295%20passing-22c55e)](#testing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0ea5e9)](LICENSE)
 
 **No API key · Any city worldwide · CLI + Web UI · CSV + Excel + ZIP · Crash-safe resume**
@@ -370,9 +370,12 @@ python worker.py
 | `GET` | `/api/jobs/export/zip` | Export all generated job files in a single ZIP archive |
 | `GET` | `/api/health` | Healthcheck endpoint |
 
-### Railway deployment
+### Railway deployment & Outreach Guides
 
-[`railway.json`](railway.json) configures Docker builds (`Dockerfile`), `python web.py` as the start command, and `/health` healthchecks. Mount a persistent volume at `/app/output` (or set `OUTPUT_DIR`) to preserve job history and exports across deployments.
+- [`railway.json`](railway.json) configures Docker builds (`Dockerfile`), `python web.py` as the start command, and `/health` healthchecks. Mount a persistent volume at `/app/output` (or set `OUTPUT_DIR`) to preserve job history, `crm.db`, and exports across deployments.
+- **CarteFidele CRM**: Open `/crm` after logging in for Lead Management, Scoring, Kanban Pipeline, Tasks & Demos, Campaigns, Unified Inbox, Compliance/Suppression, and Analytics.
+- **Resend Email Setup**: See [`docs/RESEND_SETUP.md`](docs/RESEND_SETUP.md) for DNS (`SPF`, `DKIM`, `DMARC`), subdomain sending (`outreach.cartefidele.com`), and webhook setup.
+- **Self-Hosted Evolution API (WhatsApp)**: See [`docs/EVOLUTION_API_RAILWAY.md`](docs/EVOLUTION_API_RAILWAY.md) for deploying `evoapicloud/evolution-api:latest` as a separate Railway service and pairing your business WhatsApp number via QR code. Local development (`APP_ENV=development`) always uses a safe mock WhatsApp provider.
 
 ## Docker
 
@@ -430,6 +433,8 @@ worker.py         Optional standalone Redis/async job worker
 runner.py         Search orchestration, retries, resume
 reporting.py      Statistics and reporter interface
 app/              Web app (auth, jobs, queue, API routes, templates, static)
+crm/              CarteFidele CRM (SQLite migrations, scoring, compliance, Resend, Evolution API)
+docs/             Deployment & integration guides (Resend, Evolution API on Railway)
 config/           Settings, enums, presets, run config
 geo/              Place resolution, areas, grid, plan
 scraper/          Browser, Maps extraction, selectors
@@ -449,7 +454,7 @@ Tests are fully offline:
 python -m pytest
 ```
 
-Current suite (**286 tests**) covers CLI parsing, wizard lifecycle, selector contracts,
+Current suite (**295 tests**) covers CLI parsing, wizard lifecycle, selector contracts,
 retries, extraction parsers, normalization, deduplication, lead profiles,
 geography, persistence, export, runner recovery, and web dashboard auth, job
 lifecycle (creation, duplication, cancellation, deletion), and file/ZIP downloads.

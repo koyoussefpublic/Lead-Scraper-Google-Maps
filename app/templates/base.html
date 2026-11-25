@@ -13,10 +13,16 @@
       <div class="brand">
         <span class="brand-icon">📍</span>
         <div class="brand-text">
-          <h1>LeadScraper</h1>
-          <span class="badge badge-platform">Railway Edition</span>
+          <h1>CarteFidele Prospecting</h1>
+          <span class="badge badge-platform">Scraper + CRM</span>
         </div>
       </div>
+      {% if user %}
+      <nav style="display: flex; gap: 0.5rem; align-items: center;">
+        <a href="/" class="btn btn-sm btn-ghost">🔍 Scraper</a>
+        <a href="/crm" class="btn btn-sm btn-primary">📊 CRM & Outreach</a>
+      </nav>
+      {% endif %}
       <div class="header-actions">
         {% if user %}
           <div class="user-pill">

@@ -89,6 +89,21 @@ async def run_scraper_job(job_id: str) -> None:
         runner = ScraperRun(cfg, reporter=reporter)
         stats = await runner.execute()
 
+        # Automatically ingest scraped leads into the CRM database
+        try:
+            from crm.leads import ingest_csv_file
+            ingest_summary = ingest_csv_file(
+                output_paths.leads_raw_csv,
+                scraping_job_id=job_id,
+                lead_source="google_maps",
+                actor="scraper",
+            )
+            reporter.on_log(
+                f"CRM sync: {ingest_summary['created']} new leads, {ingest_summary['updated']} updated."
+            )
+        except Exception as crm_exc:
+            logger.warning(f"CRM ingestion skipped/failed for job {job_id}: {crm_exc}")
+
         # Update final stats snapshot
         job_manager.update_progress(
             job_id,
