@@ -282,7 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
             contact_id: contact ? contact.id : null,
           }),
         });
-        alert(`Email status: ${res.delivery_status} (${res.provider})`);
+        alert(`Email status: ${res.delivery_status} (${res.provider})${res.error_message ? "\nError: " + res.error_message : ""}`);
         openLeadDetail(leadId);
       } catch (err) {
         alert(err.message);
@@ -300,7 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
             contact_id: contact ? contact.id : null,
           }),
         });
-        alert(`WhatsApp status: ${res.delivery_status} (${res.provider})`);
+        alert(`WhatsApp status: ${res.delivery_status} (${res.provider})${res.error_message ? "\nError: " + res.error_message : ""}`);
         openLeadDetail(leadId);
       } catch (err) {
         alert(err.message);

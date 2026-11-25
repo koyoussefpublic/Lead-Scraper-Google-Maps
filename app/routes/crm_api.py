@@ -458,11 +458,16 @@ async def api_resend_webhook(request: Request):
 
 
 @router.post("/api/webhooks/evolution")
-async def api_evolution_webhook(request: Request):
+async def api_evolution_webhook(request: Request, secret: str = ""):
     payload = await request.json()
-    secret = request.headers.get("x-webhook-secret") or request.headers.get("apikey") or ""
+    header_secret = (
+        secret
+        or request.headers.get("x-webhook-secret")
+        or request.headers.get("apikey")
+        or ""
+    )
     try:
-        return process_evolution_webhook(payload, secret_header=secret)
+        return process_evolution_webhook(payload, secret_header=header_secret)
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
 
